@@ -24,4 +24,4 @@ workflow 只使用仓库的 `GITHUB_TOKEN` 和 `contents: write` 权限。它不
 
 ## Consequences
 
-每个 master 提交都会生成一个可追溯的 prerelease 和校验清单。每次 push 都会增加 release 存储用量，使用者需要选择目标提交对应的 prerelease。Electron 宿主加入前，桌面安装包仍由单独 workflow 负责。
+每个 master 提交都会生成一个可追溯的 prerelease 和校验清单。每次 push 都会增加 release 存储用量，使用者需要选择目标提交对应的 prerelease。同一 release 也会携带由其中 runtime 构建的 Electron 安装程序。

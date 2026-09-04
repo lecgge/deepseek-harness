@@ -1,0 +1,6 @@
+:root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background: #11151a; color: #eef2f5; }
+body { display: grid; min-height: 100vh; margin: 0; place-items: center; }
+main { width: min(420px, calc(100vw - 48px)); text-align: center; }
+.mark { color: #9bd3c6; font-size: 40px; font-weight: 700; letter-spacing: 4px; }
+h1 { margin: 16px 0 8px; font-size: 24px; font-weight: 600; }
+p { margin: 0; color: #aeb8c1; }

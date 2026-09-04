@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-release:
-    name: Build and publish Windows runtime
+    name: Build and publish Windows desktop installer
     runs-on: windows-2025
     timeout-minutes: 60
     steps:
@@ -67,20 +67,31 @@ jobs:
           pnpm exec tsx scripts/build-exe-for-python-sdk.ts
           --targets=node24-win-x64
 
+      - name: Build Windows installer
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm --filter @deepseek-ai/dsh-desktop dist
+
       - name: Create checksums
         shell: pwsh
         run: |
           $assets = @(
             'dist-exe/deepseek-harness-sdk-runtime-win-x64.exe',
-            'dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe'
+            'dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe',
+            'dist-desktop/DeepSeek-Harness-Setup-*-x64.exe'
           )
-          foreach ($asset in $assets) {
+          $resolved = Get-ChildItem -Path $assets -File
+          if ($resolved.Count -ne 3) {
+            throw "Expected three release assets, found $($resolved.Count)"
+          }
+          foreach ($asset in $resolved) {
             if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
               throw "Build asset is missing: $asset"
             }
           }
-          Get-FileHash -Algorithm SHA256 $assets |
-            ForEach-Object { "$($_.Hash.ToLowerInvariant())  dist-exe/$([IO.Path]::GetFileName($_.Path))" } |
+          Get-FileHash -Algorithm SHA256 $resolved |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring((Resolve-Path '.').Path.Length + 1).Replace('\', '/'))" } |
             Set-Content dist-exe/SHA256SUMS
 
       - name: Resolve release identity
@@ -91,7 +102,7 @@ jobs:
           $shortSha = $env:GITHUB_SHA.Substring(0, 12)
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=dsh-runtime-$shortSha" >> $env:GITHUB_OUTPUT
-          "title=DSH Windows runtime $version ($shortSha)" >> $env:GITHUB_OUTPUT
+          "title=DSH Windows desktop $version ($shortSha)" >> $env:GITHUB_OUTPUT
 
       - name: Create or update GitHub prerelease
         shell: pwsh
@@ -112,6 +123,7 @@ jobs:
           gh release upload $env:RELEASE_TAG `
             dist-exe/deepseek-harness-sdk-runtime-win-x64.exe `
             dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe `
+            dist-desktop/DeepSeek-Harness-Setup-*-x64.exe `
             dist-exe/SHA256SUMS `
             --clobber
           if ($LASTEXITCODE -ne 0) { throw "Could not upload assets to $env:RELEASE_TAG" }

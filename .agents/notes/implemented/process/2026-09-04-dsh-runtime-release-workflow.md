@@ -26,4 +26,4 @@ The workflow uses only the repository `GITHUB_TOKEN` with `contents: write`. It 
 
 ## Consequences
 
-Each master commit has a unique, traceable prerelease and checksum manifest. Release storage grows with every pushed commit, and prereleases require consumers to select the desired commit-tagged version. Desktop installer assembly remains a separate workflow until the Electron host is added.
+Each master commit has a unique, traceable prerelease and checksum manifest. Release storage grows with every pushed commit, and prereleases require consumers to select the desired commit-tagged version. The same release also carries the Electron installer built from the runtime it contains.

@@ -1,0 +1,25 @@
+appId: ai.deepseek.harness
+productName: DeepSeek Harness
+artifactName: DeepSeek-Harness-Setup-${version}-${arch}.${ext}
+directories:
+  output: ../../dist-desktop
+  buildResources: build
+files:
+  - lib/**/*
+  - package.json
+extraResources:
+  - from: ../../dist-exe/deepseek-harness-sdk-runtime-win-x64.exe
+    to: runtime/deepseek-harness-sdk-runtime-win-x64.exe
+  - from: ../../dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe
+    to: runtime/deepseek-harness-sdk-runtime-win-x64-rg.exe
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  signAndEditExecutable: false
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false

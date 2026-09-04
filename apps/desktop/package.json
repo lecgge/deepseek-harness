@@ -1,0 +1,21 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "version": "0.1.2-alpha.5",
+  "description": "Standalone Electron host for the DSH Web profile",
+  "private": true,
+  "type": "module",
+  "main": "lib/main.cjs",
+  "scripts": {
+    "build": "tsdown -c tsdown.config.ts && pnpm copy-renderer",
+    "copy-renderer": "node -e \"const fs=require('node:fs'); fs.cpSync('src/renderer','lib/renderer',{recursive:true});\"",
+    "start": "pnpm build && electron .",
+    "dist": "pnpm build && electron-builder --win nsis",
+    "dist:dir": "pnpm build && electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "^38.1.0",
+    "electron-builder": "^26.0.12",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3"
+  }
+}
