@@ -1,0 +1,117 @@
+name: DSH Windows Runtime Release
+
+# Build the existing single-file dsh runtime for the desktop host. Every push
+# to the personal fork's master branch produces a traceable prerelease keyed by
+# the commit SHA; workflow_dispatch is available for rebuilding that ref.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dsh-runtime-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  build-and-release:
+    name: Build and publish Windows runtime
+    runs-on: windows-2025
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Enable Windows Developer Mode
+        shell: pwsh
+        run: >-
+          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+          /t REG_DWORD /f /v "AllowDevelopmentWithoutDevLicense" /d "1"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Cache pkg target binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.pkg-cache
+          key: pkg-fetch-node24-win-x64-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pkg-fetch-node24-win-x64-
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Build single-file runtime
+        shell: pwsh
+        env:
+          DSH_BUILD_CLIENT_PROFILE: official
+        run: >-
+          pnpm exec tsx scripts/build-exe-for-python-sdk.ts
+          --targets=node24-win-x64
+
+      - name: Create checksums
+        shell: pwsh
+        run: |
+          $assets = @(
+            'dist-exe/deepseek-harness-sdk-runtime-win-x64.exe',
+            'dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe'
+          )
+          foreach ($asset in $assets) {
+            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+              throw "Build asset is missing: $asset"
+            }
+          }
+          Get-FileHash -Algorithm SHA256 $assets |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  dist-exe/$([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content dist-exe/SHA256SUMS
+
+      - name: Resolve release identity
+        id: release
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $shortSha = $env:GITHUB_SHA.Substring(0, 12)
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=dsh-runtime-$shortSha" >> $env:GITHUB_OUTPUT
+          "title=DSH Windows runtime $version ($shortSha)" >> $env:GITHUB_OUTPUT
+
+      - name: Create or update GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.title }}
+        run: |
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_TAG `
+              --target $env:GITHUB_SHA `
+              --title $env:RELEASE_TITLE `
+              --prerelease `
+              --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw "Could not create release $env:RELEASE_TAG" }
+          }
+          gh release upload $env:RELEASE_TAG `
+            dist-exe/deepseek-harness-sdk-runtime-win-x64.exe `
+            dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe `
+            dist-exe/SHA256SUMS `
+            --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Could not upload assets to $env:RELEASE_TAG" }
