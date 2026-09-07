@@ -11,13 +11,26 @@ import {
   startRuntime,
 } from '../src/runtime.js'
 
-const { terminateProcessTree } = vi.hoisted(() => ({
+const { terminateProcessTree, resolveShellEnvironment } = vi.hoisted(() => ({
   terminateProcessTree: vi.fn(async () => undefined),
+  resolveShellEnvironment: vi.fn((): NodeJS.ProcessEnv => ({
+    ELECTRON_RUN_AS_NODE: '1',
+    SHELL_CAPTURED: '1',
+    PATH: '/bin',
+  })),
 }))
 
 vi.mock('../src/process-tree.js', () => ({
   terminateProcessTree,
 }))
+
+vi.mock('../src/environment.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/environment.js')>()
+  return {
+    ...actual,
+    resolveShellEnvironment,
+  }
+})
 
 const STARTUP_LINE = 'dsh web: http://127.0.0.1:43123/?token=abc\n'
 const STARTUP_URL = 'http://127.0.0.1:43123/?token=abc'
@@ -44,6 +57,7 @@ describe('startRuntime', () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'dsh-desktop-runtime-'))
     terminateProcessTree.mockClear()
+    resolveShellEnvironment.mockClear()
   })
 
   afterEach(async () => {
@@ -102,6 +116,35 @@ describe('startRuntime', () => {
 
     await handle.stop()
     expect(terminateProcessTree).toHaveBeenCalled()
+    expect(resolveShellEnvironment).not.toHaveBeenCalled()
+  })
+
+  it('uses resolveShellEnvironment when env is omitted', async () => {
+    const home = join(root, 'dsh')
+    const launchRoot = join(root, 'launch-root')
+    let spawned: { options: SpawnOptions } | undefined
+    const spawnImpl = ((_command: string, _args: readonly string[], options: SpawnOptions) => {
+      spawned = { options }
+      return fakeChild(STARTUP_LINE)
+    }) as typeof spawn
+
+    const handle = await startRuntime({
+      executable: join(root, 'node.exe'),
+      entryWrapper: join(root, 'harness-node-entry.mjs'),
+      binJs: join(root, 'bin.js'),
+      home,
+      launchRoot,
+      logPath: join(root, 'harness.log'),
+      probe: async () => undefined,
+      spawnImpl,
+    })
+
+    expect(resolveShellEnvironment).toHaveBeenCalled()
+    expect(spawned?.options.env?.DSH_HOME).toBe(home)
+    expect(spawned?.options.env?.ELECTRON_RUN_AS_NODE).toBeUndefined()
+    expect(spawned?.options.env?.SHELL_CAPTURED).toBe('1')
+
+    await handle.stop()
   })
 
   it('rejects a non-loopback URL and stops the child', async () => {

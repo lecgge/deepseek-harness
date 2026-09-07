@@ -50,15 +50,51 @@ describe('stageDesktopRuntime', () => {
     })).rejects.toThrow('Windows x64')
   })
 
-  it('fails when bin.js is missing', async () => {
+  it('fails when bin.js is missing and does not remove destination', async () => {
     const { nodeExe, wrappers, root } = fixture()
+    const destination = join(root, 'out')
+    mkdirSync(destination)
+    writeFileSync(join(destination, 'keep.txt'), 'keep')
     await expect(stageDesktopRuntime({
       sourceClosure: join(root, 'empty'),
       nodeExecutable: nodeExe,
       wrappers,
-      destination: join(root, 'out'),
+      destination,
       platform: 'win32',
       arch: 'x64',
     })).rejects.toThrow('bin.js')
+    expect(existsSync(join(destination, 'keep.txt'))).toBe(true)
+  })
+
+  it('does not remove destination when a wrapper is missing', async () => {
+    const { closure, nodeExe, wrappers, root } = fixture()
+    const destination = join(root, 'out')
+    mkdirSync(destination)
+    writeFileSync(join(destination, 'keep.txt'), 'keep')
+    await expect(stageDesktopRuntime({
+      sourceClosure: closure,
+      nodeExecutable: nodeExe,
+      wrappers: [...wrappers, join(root, 'missing.mjs')],
+      destination,
+      platform: 'win32',
+      arch: 'x64',
+    })).rejects.toThrow('missing.mjs')
+    expect(existsSync(join(destination, 'keep.txt'))).toBe(true)
+  })
+
+  it('does not remove destination when node.exe is missing', async () => {
+    const { closure, wrappers, root } = fixture()
+    const destination = join(root, 'out')
+    mkdirSync(destination)
+    writeFileSync(join(destination, 'keep.txt'), 'keep')
+    await expect(stageDesktopRuntime({
+      sourceClosure: closure,
+      nodeExecutable: join(root, 'absent-node.exe'),
+      wrappers,
+      destination,
+      platform: 'win32',
+      arch: 'x64',
+    })).rejects.toThrow('node.exe')
+    expect(existsSync(join(destination, 'keep.txt'))).toBe(true)
   })
 })

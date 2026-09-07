@@ -8,6 +8,8 @@ import { join } from 'node:path'
 const REQUIRED_FILES = [
   'node.exe',
   'harness-node-entry.mjs',
+  'windows-hidden-console.mjs',
+  'windows-child-process-hide.mjs',
   join('node', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
 ] as const
 

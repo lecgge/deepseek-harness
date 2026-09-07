@@ -121,17 +121,18 @@ export function resolveShellEnvironment(): NodeJS.ProcessEnv {
  * Build the sanitized env passed to the Harness Node spawn.
  * @param parent - captured-or-inherited env (not renderer-visible).
  * @param extras - per-user `DSH_HOME` directory for the child.
- * @returns spawn env with `ELECTRON_RUN_AS_NODE` removed, `DSH_HOME` set, and case-correct Path/PATH.
+ * @returns spawn env with `ELECTRON_RUN_AS_NODE` removed, `DSH_HOME` set, and a single case-correct Path/PATH.
  */
 export function childEnvironment(
   parent: NodeJS.ProcessEnv,
   extras: { DSH_HOME: string },
 ): NodeJS.ProcessEnv {
   const stripped = stripElectronNodeMode(parent)
-  const pathKey = process.platform === 'win32' ? 'Path' : 'PATH'
-  return {
-    ...stripped,
-    DSH_HOME: extras.DSH_HOME,
-    [pathKey]: resolveEnvironmentPath(stripped),
+  const pathValue = resolveEnvironmentPath(stripped)
+  const env: NodeJS.ProcessEnv = { DSH_HOME: extras.DSH_HOME }
+  for (const [name, value] of Object.entries(stripped)) {
+    if (!/^path$/iu.test(name)) env[name] = value
   }
+  env[process.platform === 'win32' ? 'Path' : 'PATH'] = pathValue
+  return env
 }

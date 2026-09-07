@@ -14,7 +14,7 @@ The desktop host needs a Windows installer that a user can download without inst
 
 The personal fork runs `.github/workflows/dsh-desktop-release.yml` on every push to `master`, on `desktop-v*` tags, and on manual dispatch. The workflow runs on `windows-2025`, deploys the node carrier with `scripts/build-exe-for-python-sdk.ts --targets=node24-win-x64 --skip-pkg`, then builds the Electron NSIS installer with `pnpm --filter @deepseek-ai/dsh-desktop dist`. It publishes the installer and `SHA256SUMS` to GitHub Releases and does not upload pkg executables or a `-rg.exe` sidecar.
 
-A `master` push or a dispatch on a non-tag ref creates a prerelease tagged `dsh-desktop-<12-char-sha>`. A `desktop-v*` tag creates a Latest release whose tag suffix must equal the root `package.json` version; that create path does not pass `--prerelease`. Re-running the same ref updates existing release assets with `--clobber`.
+A `master` push or a dispatch on a non-tag ref creates a prerelease tagged `dsh-desktop-<12-char-sha>`. That path renames `DeepSeek-Harness-Setup-*-x64.exe` to insert the same 12-character SHA before checksum and upload. A `desktop-v*` tag creates a Latest release whose tag suffix must equal the root `package.json` version; that create path does not pass `--prerelease` and keeps the version-only installer name. Re-running the same ref updates existing release assets with `--clobber`.
 
 The workflow uses only the repository `GITHUB_TOKEN` with `contents: write`. It does not change package versions, commit generated files, or publish to npm/PyPI. Desktop CI does not invoke pkg and does not cache `~/.pkg-cache`. The Python SDK single-file executable pipeline remains a separate consumer of the same closure deploy.
 
@@ -34,4 +34,4 @@ The workflow reads pnpm's JavaScript entrypoint after dependency installation an
 
 ## Consequences
 
-Each master commit has a unique, traceable prerelease installer and checksum. Official `desktop-v*` tags produce a Latest release only when the tag suffix equals the root package version. Release storage grows with every pushed master commit, and prerelease consumers must select the desired commit-tagged installer. Closure deploys use the dependency tree installed by the workflow instead of changing it during packaging. The installer carries the bundled Node closure rather than a pkg executable.
+Each master commit has a unique, traceable prerelease installer whose filename includes the 12-character commit SHA, plus a checksum. Official `desktop-v*` tags produce a Latest release only when the tag suffix equals the root package version. Release storage grows with every pushed master commit, and prerelease consumers must select the desired commit-tagged installer. Closure deploys use the dependency tree installed by the workflow instead of changing it during packaging. The installer carries the bundled Node closure rather than a pkg executable.

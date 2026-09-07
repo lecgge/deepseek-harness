@@ -36,6 +36,17 @@ describe('desktop release workflow', () => {
     expect(steps[smokeIndex]?.run).toContain('scripts/smoke-desktop-runtime.ts')
     expect(smokeIndex).toBeGreaterThan(installerIndex)
 
+    const rename = steps.find(step => step.name === 'Rename prerelease installer')
+    expect(rename?.if).toContain("github.ref_type != 'tag'")
+    expect(rename?.run).toContain('Substring(0, 12)')
+    expect(rename?.run).toContain('DeepSeek-Harness-Setup-*-x64.exe')
+    expect(rename?.run).toContain('Rename-Item')
+    expect(rename?.run).toContain('-$shortSha-x64.exe')
+    const renameIndex = steps.findIndex(step => step.name === 'Rename prerelease installer')
+    const checksumIndex = steps.findIndex(step => step.name === 'Create checksums')
+    expect(renameIndex).toBeGreaterThan(smokeIndex)
+    expect(checksumIndex).toBeGreaterThan(renameIndex)
+
     const upload = steps.find(step => typeof step.run === 'string' && step.run.includes('gh release upload'))
     expect(upload?.run).toContain('DeepSeek-Harness-Setup-*-x64.exe')
     expect(upload?.run).toContain('SHA256SUMS')

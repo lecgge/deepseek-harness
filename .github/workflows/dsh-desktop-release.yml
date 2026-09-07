@@ -79,6 +79,22 @@ jobs:
         shell: pwsh
         run: pnpm exec tsx scripts/smoke-desktop-runtime.ts
 
+      - name: Rename prerelease installer
+        if: github.ref_type != 'tag'
+        shell: pwsh
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 12)
+          $assets = @(Get-ChildItem -Path 'dist-desktop/DeepSeek-Harness-Setup-*-x64.exe' -File)
+          if ($assets.Count -ne 1) {
+            throw "Expected one installer, found $($assets.Count)"
+          }
+          $asset = $assets[0]
+          $newName = $asset.Name -replace '-x64\.exe$', "-$shortSha-x64.exe"
+          if ($newName -eq $asset.Name) {
+            throw "Could not insert commit SHA into installer name: $($asset.Name)"
+          }
+          Rename-Item -LiteralPath $asset.FullName -NewName $newName
+
       - name: Create checksums
         shell: pwsh
         run: |

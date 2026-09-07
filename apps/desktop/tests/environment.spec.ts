@@ -52,4 +52,20 @@ describe('childEnvironment', () => {
     const pathKey = process.platform === 'win32' ? 'Path' : 'PATH'
     expect(env[pathKey]).toBe(pathValue)
   })
+
+  it('deletes every Path spelling before assigning the canonical key', () => {
+    const canonical = process.platform === 'win32' ? 'C:\\bin' : '/usr/bin'
+    const parent: NodeJS.ProcessEnv = {
+      path: 'lower',
+      PATH: process.platform === 'win32' ? 'upper' : canonical,
+      Path: process.platform === 'win32' ? canonical : 'title',
+      FOO: 'bar',
+    }
+    const env = childEnvironment(parent, { DSH_HOME: '/tmp/dsh-home' })
+    const pathKey = process.platform === 'win32' ? 'Path' : 'PATH'
+    const pathKeys = Object.keys(env).filter(name => /^path$/iu.test(name))
+    expect(pathKeys).toEqual([pathKey])
+    expect(env[pathKey]).toBe(canonical)
+    expect(env.FOO).toBe('bar')
+  })
 })

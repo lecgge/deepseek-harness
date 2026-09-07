@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { appendFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { childEnvironment } from './environment.js'
+import { childEnvironment, resolveShellEnvironment } from './environment.js'
 import { terminateProcessTree } from './process-tree.js'
 import { parseStartupUrl } from './startup-url.js'
 
@@ -89,7 +89,7 @@ export async function startRuntime(options: RuntimeOptions): Promise<RuntimeHand
     '0',
   ], {
     cwd: options.launchRoot,
-    env: childEnvironment(options.env ?? process.env, { DSH_HOME: options.home }),
+    env: childEnvironment(options.env ?? resolveShellEnvironment(), { DSH_HOME: options.home }),
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   })

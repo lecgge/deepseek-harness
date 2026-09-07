@@ -46,6 +46,11 @@ export async function stageDesktopRuntime(options: StageDesktopRuntimeOptions): 
   if (!existsSync(binJs)) {
     throw new Error(`stage-desktop-runtime: missing bin.js at ${binJs}.`)
   }
+  for (const wrapper of options.wrappers) {
+    if (!existsSync(wrapper)) {
+      throw new Error(`stage-desktop-runtime: missing wrapper at ${wrapper}.`)
+    }
+  }
   await rm(options.destination, { recursive: true, force: true })
   await mkdir(options.destination, { recursive: true })
   await copyFile(options.nodeExecutable, join(options.destination, 'node.exe'))
