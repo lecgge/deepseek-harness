@@ -9,8 +9,8 @@
     "build": "tsdown -c tsdown.config.ts && pnpm copy-renderer",
     "copy-renderer": "node -e \"const fs=require('node:fs'); fs.cpSync('src/renderer','lib/renderer',{recursive:true});\"",
     "start": "pnpm build && electron .",
-    "dist": "pnpm build && electron-builder --win nsis",
-    "dist:dir": "pnpm build && electron-builder --win dir"
+    "dist": "pnpm build && pnpm exec tsx ../../scripts/stage-desktop-runtime.ts && electron-builder --win nsis && pnpm exec tsx ../../scripts/verify-desktop-payload.ts ../../dist-desktop/win-unpacked/resources/runtime",
+    "dist:dir": "pnpm build && pnpm exec tsx ../../scripts/stage-desktop-runtime.ts && electron-builder --win dir && pnpm exec tsx ../../scripts/verify-desktop-payload.ts ../../dist-desktop/win-unpacked/resources/runtime"
   },
   "devDependencies": {
     "electron": "^38.1.0",

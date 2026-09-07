@@ -8,10 +8,8 @@ files:
   - lib/**/*
   - package.json
 extraResources:
-  - from: ../../dist-exe/deepseek-harness-sdk-runtime-win-x64.exe
-    to: runtime/deepseek-harness-sdk-runtime-win-x64.exe
-  - from: ../../dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe
-    to: runtime/deepseek-harness-sdk-runtime-win-x64-rg.exe
+  - from: ../../dist-desktop-runtime
+    to: runtime
 win:
   target:
     - target: nsis
