@@ -157,6 +157,8 @@ class BuildCli {
     readonly skipBuild: boolean,
     /** Print every command and config patch instead of executing. */
     readonly dryRun: boolean,
+    /** Deploy the node carrier and native addons; do not invoke pkg or write dist-exe/. */
+    readonly skipPkg: boolean,
   ) {}
 
   /**
@@ -190,7 +192,7 @@ class BuildCli {
       }
       seen.add(key)
     }
-    return new BuildCli(targets, values['skip-build'], values['dry-run'])
+    return new BuildCli(targets, values['skip-build'], values['dry-run'], values['skip-pkg'])
   }
 
   private static parseRaw(argv: string[]) {
@@ -200,6 +202,7 @@ class BuildCli {
         'targets': { type: 'string' },
         'skip-build': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
+        'skip-pkg': { type: 'boolean', default: false },
         'help': { type: 'boolean', default: false },
       },
     }).values
@@ -213,6 +216,7 @@ class BuildCli {
       '                         Default: the host platform only (on node24).',
       '  --skip-build           skip `pnpm run build` (lib/ artifacts must already exist).',
       '  --dry-run              print every command and config patch without executing.',
+      '  --skip-pkg             deploy the node carrier and native addons; do not invoke pkg or write dist-exe/.',
       '  --help                 print this help.',
       '',
       `Build route: ${PKG_SPEC} --sea; see .agents/notes/implemented/architecture/2026-07-10-single-file-executable-sdk-runtime-distribution.md.`,
@@ -416,6 +420,14 @@ class SingleExeBuild {
   }
 
   /**
+   * Stage native addons for a target without invoking pkg.
+   * @param target - the pkg target whose native addons are being staged.
+   */
+  async prepareNativeAddons(target: Target): Promise<void> {
+    await this.prepareNativePty(target)
+  }
+
+  /**
    * Package one target; SEA mode accepts one target per invocation.
    * @param target - the pkg target triple to build.
    * @returns the executable and ripgrep sidecar paths, plus the macOS spawn helper path when required.
@@ -423,7 +435,7 @@ class SingleExeBuild {
   async pack(target: Target): Promise<string[]> {
     const productBase = join(this.outDir, `${OUTPUT_BASENAME}-${target.platform}-${target.arch}`)
     const product = target.platform === 'win' ? `${productBase}.exe` : productBase
-    await this.prepareNativePty(target)
+    await this.prepareNativeAddons(target)
     if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
     await this.runPnpm(`pkg ${target.spec}`, [
       'dlx',
@@ -615,6 +627,14 @@ async function main(): Promise<void> {
   await pipeline.verifyClosure()
   await pipeline.build()
   await pipeline.deployStaging()
+  if (cli.skipPkg) {
+    for (const target of cli.targets) await pipeline.prepareNativeAddons(target)
+    const entry = join(pipeline.staging, ENTRY_BIN)
+    if (!cli.dryRun && !existsSync(entry)) {
+      throw new Error(`build-exe-for-python-sdk: ${entry} missing — run without --skip-build so lib/ artifacts exist.`)
+    }
+    return
+  }
   await pipeline.injectPkgConfig()
   const products: string[] = []
   for (const target of cli.targets) products.push(...await pipeline.pack(target))

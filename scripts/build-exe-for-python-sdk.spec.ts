@@ -32,9 +32,9 @@ describe('Python runtime executable builder CLI', () => {
     )
 
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs run verify-runtime-closure`)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs --filter dsh-python-runtime-closure deploy`)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs dlx @yao-pkg/pkg@6.21.0`)
+    expect(result.stdout).toContain(`${formatCommand(process.execPath)} C:\\tools\\pnpm.cjs run verify-runtime-closure`)
+    expect(result.stdout).toContain(`${formatCommand(process.execPath)} C:\\tools\\pnpm.cjs --filter dsh-python-runtime-closure deploy`)
+    expect(result.stdout).toContain(`${formatCommand(process.execPath)} C:\\tools\\pnpm.cjs dlx @yao-pkg/pkg@6.21.0`)
     expect(result.stdout).not.toMatch(/pnpm\.cmd/i)
   })
 
@@ -55,7 +55,7 @@ describe('Python runtime executable builder CLI', () => {
     )
 
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain(`${process.execPath} ${entrypoint} run verify-runtime-closure`)
+    expect(result.stdout).toContain(`${formatCommand(process.execPath)} ${entrypoint} run verify-runtime-closure`)
     expect(result.stdout).not.toMatch(/pnpm\.cmd/i)
   })
 
@@ -71,6 +71,20 @@ describe('Python runtime executable builder CLI', () => {
     expect(result.stderr).toContain('Windows supports x64 only')
     expect(result.stdout).toBe('')
   })
+
+  it('skips pkg and dist-exe products when --skip-pkg is set', () => {
+    const result = run(
+      { npm_execpath: 'C:\\tools\\pnpm.cjs' },
+      '--skip-build',
+      '--skip-pkg',
+      '--dry-run',
+      '--targets=node24-win-x64',
+    )
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('dsh-python-runtime-closure deploy')
+    expect(result.stdout).not.toContain('@yao-pkg/pkg@6.21.0')
+    expect(result.stdout).not.toContain('injected pkg config')
+  })
 })
 
 function isolatedPnpmEnvironment(overrides: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -78,4 +92,8 @@ function isolatedPnpmEnvironment(overrides: NodeJS.ProcessEnv): NodeJS.ProcessEn
     Object.entries(process.env).filter(([key]) => !['npm_execpath', 'pnpm_home'].includes(key.toLowerCase())),
   )
   return { ...environment, ...overrides }
+}
+
+function formatCommand(command: string): string {
+  return command.includes(' ') ? JSON.stringify(command) : command
 }
