@@ -115,7 +115,9 @@ export abstract class ReleaseFamily {
   verifyBuildArtifacts(_root: string): void {}
 
   /**
-   * Discover this family's members.
+   * Discover this family's publishable members.
+   * Private manifests under the family's globs follow the shared version
+   * without joining the pack or publish set.
    * @param root - repository root.
    * @returns Members sorted by directory, with names validated and deduplicated.
    */
@@ -128,6 +130,7 @@ export abstract class ReleaseFamily {
     for (const manifestPath of manifestPaths) {
       const normalized = manifestPath.replaceAll('\\', '/')
       const manifest = readManifest(resolve(root, manifestPath))
+      if (manifest.private === true) continue
       const name = requireString(manifest, 'name', normalized)
       const version = requireString(manifest, 'version', normalized)
       if (name === WORKSPACE_ROOT_PACKAGE) throw new Error(`${normalized} selected the workspace root`)
@@ -141,6 +144,7 @@ export abstract class ReleaseFamily {
         manifest,
       })
     }
+    if (members.length === 0) throw new Error(`release family ${this.id} matched no publishable manifests`)
     return members
   }
 

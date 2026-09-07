@@ -1,13 +1,18 @@
 /** Experimental-package publication and dependency constraints. */
 
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   checkDshFamilyVersion,
   checkExperimentalDependencyIsolation,
   checkExperimentalManifest,
+  checkWorkspaceManifest,
   expectedDshPackageFiles,
   type WorkspaceManifest,
 } from './check-workspace-constraints.ts'
+
+const rootVersion = (JSON.parse(readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8')) as { version: string }).version
 
 const experimental: WorkspaceManifest = {
   dir: 'packages/experimental/prototype',
@@ -106,6 +111,18 @@ describe('dsh family version coherence', () => {
       '0.1.2-rc.1',
     )).toBeUndefined()
     expect(checkDshFamilyVersion({ version: '0.1.2-alpha.5' }, '0.1.2-rc.1')).toBeUndefined()
+  })
+
+  it('does not require publish metadata on a private app', () => {
+    expect(checkWorkspaceManifest({
+      dir: 'apps/desktop',
+      manifest: {
+        name: '@deepseek-ai/dsh-desktop',
+        version: rootVersion,
+        private: true,
+        type: 'module',
+      },
+    })).toEqual([])
   })
 })
 

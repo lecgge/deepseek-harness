@@ -52,7 +52,7 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** npm namespace reserved for private experimental packages. */
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
-/** Directories whose packages this repository publishes: one release member each. */
+/** Directories that hold publishable packages unless the manifest sets private. */
 const releaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
@@ -312,10 +312,11 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
       || manifest.repository.directory !== expectedDirectory) {
       errors.push(`${label}: published Landlock package repository must use ${repositoryUrl} with directory ${expectedDirectory} for trusted publishing`)
     }
-  } else if (releaseMemberDirectory.test(dir)) {
-    // Release members state that they are publishable: npm refuses a private
+  } else if (releaseMemberDirectory.test(dir) && manifest.private !== true) {
+    // Publishable members state that they are publishable: npm refuses a private
     // package, and the repository field is how a consumer finds the source of
-    // the package it installed.
+    // the package it installed. A private manifest in the same directory tree
+    // follows the shared version without joining pack or publish.
     //
     // Access is per release sequence, not per scope: the vendored framework and
     // the Landlock packages publish publicly because outside consumers install
@@ -323,9 +324,6 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
     // public. A mixed scope is why no publish path passes `--access` — one flag
     // cannot serve both, so each packed manifest decides
     // ([rationale](../.agents/notes/implemented/process/2026-08-13-public-vendor-and-native-sequences.md)).
-    if (manifest.private === true) {
-      errors.push(`${label}: release member must not set "private": true`)
-    }
     if (manifest.publishConfig?.access !== 'public') {
       errors.push(`${label}: release member must set publishConfig.access to "public"`)
     }
@@ -351,7 +349,7 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
     }
   }
 
-  if (dir.startsWith('apps/') && manifest.name?.startsWith('@deepseek-ai/')) {
+  if (dir.startsWith('apps/') && manifest.private !== true && manifest.name?.startsWith('@deepseek-ai/')) {
     const expectedFiles = appPackageFiles[manifest.name]
     if (expectedFiles === undefined) {
       errors.push(`${label}: app package has no publication files policy`)

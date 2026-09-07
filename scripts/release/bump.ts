@@ -244,12 +244,12 @@ function rootVersion(root: string): string {
 
 /**
  * Discover private package manifests that share the dsh version without joining
- * its publish set.
+ * its publish set (every `packages/<group>/<pkg>` and `apps/<app>`).
  * @param root - repository root.
  * @returns Private package manifests sorted by path.
  */
 function privateDshVersions(root: string): PrivateDshVersion[] {
-  return globSync('packages/*/*/package.json', { cwd: root })
+  return globSync(['packages/*/*/package.json', 'apps/*/package.json'], { cwd: root })
     .map(path => path.replaceAll('\\', '/'))
     .sort()
     .flatMap((manifestPath) => {

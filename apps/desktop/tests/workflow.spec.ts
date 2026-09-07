@@ -23,6 +23,9 @@ describe('desktop release workflow', () => {
 
     const steps = workflow.jobs['build-and-release'].steps
     expect(steps.some(step => /pkg-cache/i.test(JSON.stringify(step)))).toBe(false)
+    // apps/desktop depends on the npm `node` package; `pnpm exec node` launches
+    // that native binary and does not set npm_execpath.
+    expect(JSON.stringify(steps)).not.toContain('pnpm exec node')
 
     const build = steps.find(step => typeof step.run === 'string' && step.run.includes('build-exe-for-python-sdk'))
     expect(build?.run).toContain('--skip-pkg')

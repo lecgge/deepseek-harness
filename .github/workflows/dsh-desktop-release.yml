@@ -52,15 +52,6 @@ jobs:
         shell: pwsh
         run: pnpm install --frozen-lockfile
 
-      - name: Resolve pnpm JavaScript entrypoint
-        shell: pwsh
-        run: |
-          $entrypoint = pnpm exec node -p "process.env.npm_execpath"
-          if ([string]::IsNullOrWhiteSpace($entrypoint) -or -not (Test-Path -LiteralPath $entrypoint -PathType Leaf)) {
-            throw "Could not resolve pnpm's JavaScript entrypoint"
-          }
-          "npm_execpath=$entrypoint" >> $env:GITHUB_ENV
-
       - name: Deploy node closure
         shell: pwsh
         env:

@@ -14,7 +14,7 @@ That coverage hole is how a mismatched version entered master on 2026-09-03. `pa
 
 `check-workspace-constraints` owns the version rule for the whole family. Its `checkDshFamilyVersion` names the boundary: any scanned workspace manifest named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*` must carry the workspace root's version. The test is name-based, so it covers `packages/` (publishable and private/experimental members), `apps/`, and the root manifest itself, and it leaves the vendored framework and the Landlock sequence on their own version lines. The previous `packages/`-scoped comparison was the only static home of the rule; the shape checks next to it (cordis peer/dev pairing, `type`, `main`/`types`/`exports`, payload `files`) stay scoped to `packages/`.
 
-The boundary equals what `release:dsh` writes: the root, the publishable members, and every private dsh package under `packages/*/*`. A divergence therefore fails the zero-build static lane — `constraints` in `ci-static`, `ci-primary`, and `hygiene`, which run on every pull request and master push — instead of only surfacing in the release lane.
+The boundary equals what `release:dsh` writes: the root, the publishable members, and every private dsh package under `packages/*/*` and `apps/*`. A divergence therefore fails the zero-build static lane — `constraints` in `ci-static`, `ci-primary`, and `hygiene`, which run on every pull request and master push — instead of only surfacing in the release lane.
 
 ## Alternatives considered
 
