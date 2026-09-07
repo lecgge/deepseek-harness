@@ -6,17 +6,19 @@ English | [中文](README.zh.md)
 
 ## Development
 
-Build the runtime first, then set `DSH_RUNTIME_PATH` when the executable is outside the default checkout location:
+Build and stage the runtime first, then set `DSH_RUNTIME_PATH` when the directory is outside the default checkout location:
 
 ```powershell
-$env:DSH_RUNTIME_PATH = "..\..\dist-exe\deepseek-harness-sdk-runtime-win-x64.exe"
+pnpm exec tsx scripts/build-exe-for-python-sdk.ts --targets=node24-win-x64 --skip-pkg
+pnpm exec tsx scripts/stage-desktop-runtime.ts
+$env:DSH_RUNTIME_PATH = "..\..\dist-desktop-runtime"
 pnpm --filter @deepseek-ai/dsh-desktop start
 ```
 
-Create the Windows installer after the runtime artifacts exist:
+Create the Windows installer after the runtime artifacts exist. The `dist` script stages the runtime itself:
 
 ```powershell
 pnpm --filter @deepseek-ai/dsh-desktop dist
 ```
 
-The installer is self-contained and includes the runtime executable and ripgrep sidecar. The app stores its DSH profile under the Electron per-user data directory and terminates the runtime process tree on exit.
+The installer is self-contained and includes bundled Node.js and the DSH closure, not a pkg executable or a `-rg.exe` sidecar. The app stores its DSH profile under the Electron per-user data directory and terminates the runtime process tree on exit.

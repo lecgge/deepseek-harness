@@ -75,6 +75,10 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: pnpm --filter @deepseek-ai/dsh-desktop dist
 
+      - name: Smoke staged runtime
+        shell: pwsh
+        run: pnpm exec tsx scripts/smoke-desktop-runtime.ts
+
       - name: Create checksums
         shell: pwsh
         run: |

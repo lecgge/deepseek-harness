@@ -31,6 +31,11 @@ describe('desktop release workflow', () => {
     const installer = steps.find(step => typeof step.run === 'string' && step.run.includes('dsh-desktop dist'))
     expect(installer?.run).toContain('dsh-desktop dist')
 
+    const smokeIndex = steps.findIndex(step => step.name === 'Smoke staged runtime')
+    const installerIndex = steps.findIndex(step => typeof step.run === 'string' && step.run.includes('dsh-desktop dist'))
+    expect(steps[smokeIndex]?.run).toContain('scripts/smoke-desktop-runtime.ts')
+    expect(smokeIndex).toBeGreaterThan(installerIndex)
+
     const upload = steps.find(step => typeof step.run === 'string' && step.run.includes('gh release upload'))
     expect(upload?.run).toContain('DeepSeek-Harness-Setup-*-x64.exe')
     expect(upload?.run).toContain('SHA256SUMS')
