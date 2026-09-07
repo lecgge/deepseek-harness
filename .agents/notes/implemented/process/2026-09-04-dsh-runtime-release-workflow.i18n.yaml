@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-04-dsh-runtime-release-workflow.md
-2026-09-04-dsh-runtime-release-workflow.md: 44c440e7813864719d4ed115c7c3f388610f9a7a
-2026-09-04-dsh-runtime-release-workflow.zh.md: cef61948bb3822d1fda88f09422e45d89618e126
+2026-09-04-dsh-runtime-release-workflow.md: aa0b460e29db35fcc08894525078501ce8f0689c
+2026-09-04-dsh-runtime-release-workflow.zh.md: 702a4afadf55b901317f80fbe771d603340b13a4

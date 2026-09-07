@@ -20,7 +20,7 @@ The workflow uses only the repository `GITHUB_TOKEN` with `contents: write`. It 
 
 The closure builder marks its nested pnpm commands as CI so lefthook leaves the checkout untouched, and it sets `pnpm_config_verify_deps_before_run=false`. The explicit pnpm setting prevents a nested command from reconciling dependencies with a production install before it deploys the carrier.
 
-The workflow does not run `pnpm exec node` to export `npm_execpath`. `apps/desktop` depends on the npm `node` package, so that command launches the packaged `node.exe` without `npm_execpath`. The closure builder resolves pnpm through `PNPM_HOME` from `pnpm/action-setup`.
+The workflow does not run `pnpm exec node` to export `npm_execpath`. `apps/desktop` depends on the npm `node` package, so that command launches the packaged `node.exe` without `npm_execpath`. The closure builder resolves pnpm through `PNPM_HOME` from `pnpm/action-setup`. After `pnpm deploy --prod`, a later `pnpm run` would prune devDependencies, so the workflow sets `pnpm_config_verify_deps_before_run=false`.
 
 ## Alternatives considered
 

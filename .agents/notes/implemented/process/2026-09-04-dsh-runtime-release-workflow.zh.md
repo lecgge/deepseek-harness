@@ -18,7 +18,7 @@ workflow 只使用仓库的 `GITHUB_TOKEN` 和 `contents: write` 权限。它不
 
 闭包构建器将嵌套的 pnpm 命令标记为 CI，使 lefthook 不会改动工作区，并设置 `pnpm_config_verify_deps_before_run=false`。该显式 pnpm 设置防止嵌套命令在部署载体前通过 production 安装重整依赖。
 
-workflow 不通过 `pnpm exec node` 导出 `npm_execpath`。`apps/desktop` 依赖 npm 的 `node` 包，该命令会启动打包的 `node.exe` 且不设置 `npm_execpath`。闭包构建器通过 `pnpm/action-setup` 提供的 `PNPM_HOME` 解析 pnpm。
+workflow 不通过 `pnpm exec node` 导出 `npm_execpath`。`apps/desktop` 依赖 npm 的 `node` 包，该命令会启动打包的 `node.exe` 且不设置 `npm_execpath`。闭包构建器通过 `pnpm/action-setup` 提供的 `PNPM_HOME` 解析 pnpm。`pnpm deploy --prod` 之后再跑 `pnpm run` 会裁掉 devDependencies，因此 workflow 设置 `pnpm_config_verify_deps_before_run=false`。
 
 ## Alternatives considered
 

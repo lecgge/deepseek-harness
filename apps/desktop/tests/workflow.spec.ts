@@ -10,6 +10,7 @@ type WorkflowStep = Record<string, unknown> & {
 }
 
 type DesktopReleaseWorkflow = {
+  env?: Record<string, string>
   on: { push: { tags?: string[] } }
   jobs: { 'build-and-release': { steps: WorkflowStep[] } }
 }
@@ -20,6 +21,7 @@ describe('desktop release workflow', () => {
       readFileSync(resolve(import.meta.dirname, '../../../.github/workflows/dsh-desktop-release.yml'), 'utf8'),
     ) as DesktopReleaseWorkflow
     expect(workflow.on.push.tags).toEqual(expect.arrayContaining(['desktop-v*']))
+    expect(workflow.env?.pnpm_config_verify_deps_before_run).toBe('false')
 
     const steps = workflow.jobs['build-and-release'].steps
     expect(steps.some(step => /pkg-cache/i.test(JSON.stringify(step)))).toBe(false)
