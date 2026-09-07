@@ -68,4 +68,12 @@ describe('childEnvironment', () => {
     expect(env[pathKey]).toBe(canonical)
     expect(env.FOO).toBe('bar')
   })
+
+  it('lets extras.DSH_HOME override a parent DSH_HOME', () => {
+    const env = childEnvironment(
+      { DSH_HOME: 'C:\\Users\\someone\\.dsh' },
+      { DSH_HOME: '/tmp/dsh-home' },
+    )
+    expect(env.DSH_HOME).toBe('/tmp/dsh-home')
+  })
 })

@@ -129,10 +129,12 @@ export function childEnvironment(
 ): NodeJS.ProcessEnv {
   const stripped = stripElectronNodeMode(parent)
   const pathValue = resolveEnvironmentPath(stripped)
-  const env: NodeJS.ProcessEnv = { DSH_HOME: extras.DSH_HOME }
+  const env: NodeJS.ProcessEnv = {}
   for (const [name, value] of Object.entries(stripped)) {
-    if (!/^path$/iu.test(name)) env[name] = value
+    if (/^path$/iu.test(name) || name === 'DSH_HOME') continue
+    env[name] = value
   }
   env[process.platform === 'win32' ? 'Path' : 'PATH'] = pathValue
+  env.DSH_HOME = extras.DSH_HOME
   return env
 }
