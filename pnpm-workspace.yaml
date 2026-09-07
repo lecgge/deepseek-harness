@@ -32,6 +32,8 @@ peerDependencyRules:
 allowBuilds:
   # Electron downloads the reviewed desktop-shell binary needed to assemble the Windows installer.
   electron: true
+  # The node package downloads the reviewed Node 24 win-x64 binary for the desktop extraResources payload.
+  node: true
   esbuild: true
   lefthook: true
   # Cross-platform boundary for the persistent PTY backend, including ConPTY on Windows.
