@@ -78,7 +78,7 @@ describe('Python runtime executable builder CLI', () => {
       '--skip-build',
       '--skip-pkg',
       '--dry-run',
-      '--targets=node24-win-x64',
+      '--targets=node24-macos-arm64',
     )
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('dsh-python-runtime-closure deploy')
