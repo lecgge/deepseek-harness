@@ -3,15 +3,45 @@ import { resolve } from 'node:path'
 import * as yaml from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 
+type WorkflowStep = Record<string, unknown> & {
+  name?: string
+  run?: string
+  if?: string
+}
+
+type DesktopReleaseWorkflow = {
+  on: { push: { tags?: string[] } }
+  jobs: { 'build-and-release': { steps: WorkflowStep[] } }
+}
+
 describe('desktop release workflow', () => {
-  it('builds and uploads the installer with the runtime assets', () => {
-    const workflow = yaml.load(readFileSync(resolve(import.meta.dirname, '../../../.github/workflows/dsh-runtime-release.yml'), 'utf8')) as {
-      jobs: { 'build-and-release': { steps: Array<Record<string, unknown>> } }
-    }
+  it('publishes dual-channel node-closure installers', () => {
+    const workflow = yaml.load(
+      readFileSync(resolve(import.meta.dirname, '../../../.github/workflows/dsh-desktop-release.yml'), 'utf8'),
+    ) as DesktopReleaseWorkflow
+    expect(workflow.on.push.tags).toEqual(expect.arrayContaining(['desktop-v*']))
+
     const steps = workflow.jobs['build-and-release'].steps
-    const installer = steps.find(step => step.name === 'Build Windows installer')
-    const upload = steps.find(step => step.name === 'Create or update GitHub prerelease')
+    expect(steps.some(step => /pkg-cache/i.test(JSON.stringify(step)))).toBe(false)
+
+    const build = steps.find(step => typeof step.run === 'string' && step.run.includes('build-exe-for-python-sdk'))
+    expect(build?.run).toContain('--skip-pkg')
+    expect(build?.run).not.toContain('pkg-fetch')
+
+    const installer = steps.find(step => typeof step.run === 'string' && step.run.includes('dsh-desktop dist'))
     expect(installer?.run).toContain('dsh-desktop dist')
+
+    const upload = steps.find(step => typeof step.run === 'string' && step.run.includes('gh release upload'))
     expect(upload?.run).toContain('DeepSeek-Harness-Setup-*-x64.exe')
+    expect(upload?.run).toContain('SHA256SUMS')
+    expect(upload?.run).not.toContain('dist-exe/deepseek-harness-sdk-runtime')
+
+    const officialTagPath = steps.find(step => String(step.if ?? '').includes("github.ref_type == 'tag'"))
+    expect(officialTagPath?.run).not.toContain('--prerelease')
+
+    const versionCheck = steps.find(step =>
+      typeof step.run === 'string' && step.run.includes("require('./package.json').version"))
+    expect(versionCheck?.run).toContain('desktop-v')
+    expect(versionCheck?.run).toContain("require('./package.json').version")
   })
 })

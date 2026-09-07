@@ -1,18 +1,19 @@
-name: DSH Windows Runtime Release
+name: DSH Windows Desktop Release
 
-# Build the existing single-file dsh runtime for the desktop host. Every push
-# to the personal fork's master branch produces a traceable prerelease keyed by
-# the commit SHA; workflow_dispatch is available for rebuilding that ref.
+# Build the Windows desktop installer from the node closure. Master pushes and
+# non-tag dispatches produce a SHA-keyed prerelease; desktop-v* tags produce a
+# Latest release when the tag suffix equals the root package.json version.
 on:
   push:
     branches: [master]
+    tags: ['desktop-v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: dsh-runtime-release-${{ github.ref }}
+  group: dsh-desktop-release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -47,25 +48,26 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Cache pkg target binary
-        uses: actions/cache@v4
-        with:
-          path: ~/.pkg-cache
-          key: pkg-fetch-node24-win-x64-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pkg-fetch-node24-win-x64-
-
       - name: Install dependencies
         shell: pwsh
         run: pnpm install --frozen-lockfile
 
-      - name: Build single-file runtime
+      - name: Resolve pnpm JavaScript entrypoint
+        shell: pwsh
+        run: |
+          $entrypoint = pnpm exec node -p "process.env.npm_execpath"
+          if ([string]::IsNullOrWhiteSpace($entrypoint) -or -not (Test-Path -LiteralPath $entrypoint -PathType Leaf)) {
+            throw "Could not resolve pnpm's JavaScript entrypoint"
+          }
+          "npm_execpath=$entrypoint" >> $env:GITHUB_ENV
+
+      - name: Deploy node closure
         shell: pwsh
         env:
           DSH_BUILD_CLIENT_PROFILE: official
         run: >-
           pnpm exec tsx scripts/build-exe-for-python-sdk.ts
-          --targets=node24-win-x64
+          --targets=node24-win-x64 --skip-pkg
 
       - name: Build Windows installer
         shell: pwsh
@@ -77,13 +79,11 @@ jobs:
         shell: pwsh
         run: |
           $assets = @(
-            'dist-exe/deepseek-harness-sdk-runtime-win-x64.exe',
-            'dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe',
             'dist-desktop/DeepSeek-Harness-Setup-*-x64.exe'
           )
           $resolved = Get-ChildItem -Path $assets -File
-          if ($resolved.Count -ne 3) {
-            throw "Expected three release assets, found $($resolved.Count)"
+          if ($resolved.Count -ne 1) {
+            throw "Expected one release asset, found $($resolved.Count)"
           }
           foreach ($asset in $resolved) {
             if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
@@ -92,7 +92,7 @@ jobs:
           }
           Get-FileHash -Algorithm SHA256 $resolved |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path.Substring((Resolve-Path '.').Path.Length + 1).Replace('\', '/'))" } |
-            Set-Content dist-exe/SHA256SUMS
+            Set-Content dist-desktop/SHA256SUMS
 
       - name: Resolve release identity
         id: release
@@ -101,10 +101,44 @@ jobs:
           $version = node -p "require('./package.json').version"
           $shortSha = $env:GITHUB_SHA.Substring(0, 12)
           "version=$version" >> $env:GITHUB_OUTPUT
-          "tag=dsh-runtime-$shortSha" >> $env:GITHUB_OUTPUT
-          "title=DSH Windows desktop $version ($shortSha)" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            $prefix = 'desktop-v'
+            if (-not $tag.StartsWith($prefix)) {
+              throw "Unexpected desktop release tag: $tag"
+            }
+            $suffix = $tag.Substring($prefix.Length)
+            if ($suffix -ne $version) {
+              throw "Tag $tag suffix '$suffix' does not equal package.json version '$version'"
+            }
+            "tag=$tag" >> $env:GITHUB_OUTPUT
+            "prerelease=false" >> $env:GITHUB_OUTPUT
+            "title=DSH Windows desktop $version" >> $env:GITHUB_OUTPUT
+          } else {
+            "tag=dsh-desktop-$shortSha" >> $env:GITHUB_OUTPUT
+            "prerelease=true" >> $env:GITHUB_OUTPUT
+            "title=DSH Windows desktop $version ($shortSha)" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Create or update GitHub Latest release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.title }}
+        run: |
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_TAG `
+              --target $env:GITHUB_SHA `
+              --title $env:RELEASE_TITLE `
+              --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw "Could not create release $env:RELEASE_TAG" }
+          }
 
       - name: Create or update GitHub prerelease
+        if: github.ref_type != 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,10 +154,15 @@ jobs:
               --generate-notes
             if ($LASTEXITCODE -ne 0) { throw "Could not create release $env:RELEASE_TAG" }
           }
+
+      - name: Upload release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
           gh release upload $env:RELEASE_TAG `
-            dist-exe/deepseek-harness-sdk-runtime-win-x64.exe `
-            dist-exe/deepseek-harness-sdk-runtime-win-x64-rg.exe `
             dist-desktop/DeepSeek-Harness-Setup-*-x64.exe `
-            dist-exe/SHA256SUMS `
+            dist-desktop/SHA256SUMS `
             --clobber
           if ($LASTEXITCODE -ne 0) { throw "Could not upload assets to $env:RELEASE_TAG" }
